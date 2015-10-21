@@ -10,6 +10,8 @@ Options:
 
 import cmd
 import xmlrpclib
+import socket
+import errno
 
 def split_spec(spec = ''):
     specs = spec.split(':')
@@ -68,7 +70,14 @@ def mGetAllProcessInfo(configs, section=None, option=None):
     for conn in conns:
         server = xmlrpclib.Server(conn['conn'] + '/RPC2')
 
-        for info in server.supervisor.getAllProcessInfo():
+        try:
+            infos = server.supervisor.getAllProcessInfo()
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+
+        for info in infos:
             if info['group'] == info['name']:
                 print "%s:%s:%s\t%s\t%s" % \
                     (conn['section'], conn['option'], info['name'], info['statename'], info['description'])
@@ -84,7 +93,13 @@ def mGetProcessInfo(configs, section=None, option=None, group=None, name=None):
     for conn in conns:
         server = xmlrpclib.Server(conn['conn'] + '/RPC2')
 
-        info = server.supervisor.getProcessInfo(group + ':' + name)
+        try:
+            info = server.supervisor.getProecssInfo(group + ':' + name)
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+
         if info['group'] == info['name']:
             print "%s:%s:%s\t%s\t%s" % \
                 (conn['section'], conn['option'], info['name'], info['statename'], info['description'])
@@ -99,7 +114,14 @@ def mGetSupervisorVersion(configs, section=None, option=None):
     for conn in conns:
         server = xmlrpclib.Server(conn['conn'] + '/RPC2')
 
-        print "%s:%s\t%s" % (conn['section'], conn['option'], server.supervisor.getSupervisorVersion())
+        try:
+            version = server.supervisor.getSupervisorVersion()
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+
+        print "%s:%s\t%s" % (conn['section'], conn['option'], version)
 
 class Multi(cmd.Cmd):
 
