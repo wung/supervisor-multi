@@ -77,6 +77,9 @@ def mGetAllProcessInfo(configs, section=None, option=None):
                 print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
                 continue
 
+        if not infos:
+            print "%s:%s\tno process" % (conn['section'], conn['option'])
+
         for info in infos:
             if info['group'] == info['name']:
                 print "%s:%s:%s\t%s\t%s" % \
@@ -214,7 +217,6 @@ class Multi(cmd.Cmd):
         print 'status <section>:<option>:<group>:<name>     Get status for a single process'
         print 'status <section>:<option>:<name>             Get status for a single process'
         print 'status <section>:<option>:<group>:*          [TODO] Get status for all processes in a group'
-        print 'status <section>:<option>:*                  [TODO] Get status for all processes of all groups in a host'
         print 'status <section>:<option>                    Get status for all processes of all groups in a host'
         print 'status <section>:*                           [TODO] Get status for all processes of all groups in all hosts for a section'
         print 'status                                       Get all status infos'
