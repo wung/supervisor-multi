@@ -127,16 +127,16 @@ def mGetSupervisorVersion(configs, section=None, option=None):
 def mStartProcess(configs, section=None, option=None, group=None, name=None):
     conns = getConnections(configs, section, option)
 
-    rc = True
     for conn in conns:
         server = xmlrpclib.Server(conn['conn'] + '/RPC2')
+        rc = True
 
         try:
             spec = name
             if group:
                 spec = group + ':' + name
             # by default, wait = True
-            rc &= server.supervisor.startProcess(spec)
+            rc = server.supervisor.startProcess(spec)
         except socket.error as e:
             if e.args[0] == errno.ECONNREFUSED:
                 print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
@@ -152,16 +152,16 @@ def mStartProcess(configs, section=None, option=None, group=None, name=None):
 def mStopProcess(configs, section=None, option=None, group=None, name=None):
     conns = getConnections(configs, section, option)
 
-    rc = True
     for conn in conns:
         server = xmlrpclib.Server(conn['conn'] + '/RPC2')
+        rc = True
 
         try:
             spec = name
             if group:
                 spec = group + ':' + name
             # by default, wait = True
-            rc &= server.supervisor.stopProcess(spec)
+            rc = server.supervisor.stopProcess(spec)
         except socket.error as e:
             if e.args[0] == errno.ECONNREFUSED:
                 print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
@@ -172,6 +172,27 @@ def mStopProcess(configs, section=None, option=None, group=None, name=None):
                 continue
 
         print "stop %s:%s:%s:%s: %s" % (conn['section'], conn['option'], group, name, rc)
+
+
+def mShutdown(configs, section=None, option=None):
+    conns = getConnections(configs, section, option)
+
+    for conn in conns:
+        server = xmlrpclib.Server(conn['conn'] + '/RPC2')
+        rc = True
+
+        try:
+            rc = server.supervisor.shutdown()
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+        except xmlrpclib.Fault as f:
+            if f.faultCode == 10:
+                print "%s:%s\t no such process" % (conn['section'], conn['option'])
+                continue
+
+        print "shutdown %s:%s: %s" % (conn['section'], conn['option'], rc)
 
 
 class Multi(cmd.Cmd):
@@ -226,6 +247,15 @@ class Multi(cmd.Cmd):
 
     def help_restart(self):
         print 'restart <section>:<option>:<group>:<name>        Restart a single process'
+
+    def do_shutdown(self, arg):
+        section, option, group, program = split_spec(arg)
+
+        mShutdown(self.configs, section, option)
+
+    def help_shutdown(self):
+        print 'shutdown <section>:<option>      Shut the remote supervisord down'
+        print 'shutdown <section>               [TODO] Shut the remote supervisords which belong to the section down'
 
     def do_version(self, arg):
         section, option, group, program = split_spec(arg)
