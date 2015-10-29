@@ -123,9 +123,60 @@ def mGetSupervisorVersion(configs, section=None, option=None):
 
         print "%s:%s\t%s" % (conn['section'], conn['option'], version)
 
+
+def mStartProcess(configs, section=None, option=None, group=None, name=None):
+    conns = getConnections(configs, section, option)
+
+    rc = True
+    for conn in conns:
+        server = xmlrpclib.Server(conn['conn'] + '/RPC2')
+
+        try:
+            spec = name
+            if group:
+                spec = group + ':' + name
+            # by default, wait = True
+            rc &= server.supervisor.startProcess(spec)
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+        except xmlrpclib.Fault as f:
+            if f.faultCode == 10:
+                print "%s:%s\t no such process" % (conn['section'], conn['option'])
+                continue
+
+        print "start %s:%s:%s:%s: %s" % (conn['section'], conn['option'], group, name, rc)
+
+
+def mStopProcess(configs, section=None, option=None, group=None, name=None):
+    conns = getConnections(configs, section, option)
+
+    rc = True
+    for conn in conns:
+        server = xmlrpclib.Server(conn['conn'] + '/RPC2')
+
+        try:
+            spec = name
+            if group:
+                spec = group + ':' + name
+            # by default, wait = True
+            rc &= server.supervisor.stopProcess(spec)
+        except socket.error as e:
+            if e.args[0] == errno.ECONNREFUSED:
+                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
+                continue
+        except xmlrpclib.Fault as f:
+            if f.faultCode == 10:
+                print "%s:%s\t no such process" % (conn['section'], conn['option'])
+                continue
+
+        print "stop %s:%s:%s:%s: %s" % (conn['section'], conn['option'], group, name, rc)
+
+
 class Multi(cmd.Cmd):
 
-    def __init__(self, config='./multi.ini', completekey='tab', stdin=None, stdout=None):
+    def __init__(self, config='./supervisor-multi.ini', completekey='tab', stdin=None, stdout=None):
         self.prompt = 'supervisor-multi> '
         self.configs = parseConfig(config)
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
@@ -146,6 +197,35 @@ class Multi(cmd.Cmd):
         print 'status <section>:<option>                    Get status for all processes of all groups in a host'
         print 'status <section>:*                           [TODO] Get status for all processes of all groups in all hosts for a section'
         print 'status                                       Get all status infos'
+
+    def do_start(self, arg):
+        section, option, group, program = split_spec(arg)
+
+        mStartProcess(self.configs, section, option, group, program)
+
+        #mStartProcessAll(self.configs, section, option, group, program)
+
+    def help_start(self):
+        print 'start <section>:<option>:<group>:<name>      Start a single process'
+
+    def do_stop(self, arg):
+        section, option, group, program = split_spec(arg)
+
+        mStopProcess(self.configs, section, option, group, program)
+
+        #mStopProcessAll(self.configs, section, option, group, program)
+
+    def help_stop(self):
+        print 'stop <section>:<option>:<group>:<name>       Stop a single process'
+
+    def do_restart(self, arg):
+        section, option, group, program = split_spec(arg)
+
+        mStopProcess(self.configs, section, option, group, program)
+        mStartProcess(self.configs, section, option, group, program)
+
+    def help_restart(self):
+        print 'restart <section>:<option>:<group>:<name>        Restart a single process'
 
     def do_version(self, arg):
         section, option, group, program = split_spec(arg)
