@@ -13,12 +13,14 @@ def mGetAllProcessInfo(configs, section=None, option=None):
         try:
             infos = server.supervisor.getAllProcessInfo()
         except socket.error as e:
-            if e.args[0] == errno.ECONNREFUSED:
-                print "%s:%s\tconnection refused" % (conn['section'], conn['option'])
-                continue
+            print "%s:%s\t%s" % (conn['section'], conn['option'], e)
+            continue
+        except:
+            raise
 
         if not infos:
             print "%s:%s\tno process" % (conn['section'], conn['option'])
+            continue
 
         for info in infos:
             if info['group'] == info['name']:
